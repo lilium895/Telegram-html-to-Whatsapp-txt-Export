@@ -1,0 +1,68 @@
+from bs4 import BeautifulSoup
+
+def transform_html_to_whatsapp(html_file):
+    # Read the HTML file
+    with open(html_file, 'r', encoding='utf-8') as file:
+        html_content = file.read()
+
+    # Parse the HTML content
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Extract chat messages
+    messages = soup.find_all('div', class_='message')
+
+    # Transform messages to WhatsApp format
+    whatsapp_chat = ''
+    for message in messages:
+        
+        #Name of sender
+        sender_element = message.find('div', class_='from_name')
+        if sender_element is  not None:
+            sender = sender_element.text.strip()
+
+        #date and time
+        timestamp_div = message.find('div', class_="pull_right date details")
+        if timestamp_div:
+            timestamp = timestamp_div['title']
+            date_str = timestamp[:10]
+            time_str = timestamp[11:19]
+        else:
+            date_str, time_str = None, None
+        
+        #find text message
+        text_element = message.find('div', class_='text')
+        if text_element is not None:
+            text=text_element.text.strip()
+            
+            # Format txt message in WhatsApp format
+            if time_str:
+                whatsapp_message = f'[{date_str}, {time_str}] {sender}: '
+                if text is not None:
+                    whatsapp_message += f'{text}\n'
+                whatsapp_chat += whatsapp_message
+        #find media
+        media_element=message.find('div',class_='media_wrap clearfix')
+        media = None
+        if media_element is not None:
+            for link in media_element.find_all('a'):
+                media=link.get('href')
+                
+                #remove filetype before file name
+                i=media.index("/")
+                media=media[i+1:]
+                
+                # Format media message in WhatsApp format
+                if time_str:
+                    whatsapp_message = f'[{date_str}, {time_str}] {sender}: '
+                    if media is not None:
+                        whatsapp_message += f'{media} (file attached)\n'
+                    whatsapp_chat += whatsapp_message
+
+    # Save the transformed chat to a file
+    with open('_chat.txt', 'w', encoding='utf-8') as file:
+        file.write(whatsapp_chat)
+
+    print('Transformation complete. The WhatsApp chat export is saved as _chat.txt')
+
+# Usage example
+transform_html_to_whatsapp("messages.html")
