@@ -55,7 +55,7 @@ def transform_html_to_whatsapp(html_file):
                 if time_str:
                     whatsapp_message = f'[{date_str}, {time_str}] {sender}: '
                     if media is not None:
-                        whatsapp_message += f'{media} (file attached)\n'
+                        whatsapp_message += f'<attached: {media} >\n'
                     whatsapp_chat += whatsapp_message
 
     # Save the transformed chat to a file
