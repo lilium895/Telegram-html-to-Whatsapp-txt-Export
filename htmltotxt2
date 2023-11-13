@@ -1,0 +1,114 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Nov 11 17:34:31 2023
+
+@author: gabri
+"""
+from bs4 import BeautifulSoup
+
+def transform_html_to_whatsapp(html_file):
+    # Read the HTML file
+    with open(html_file, 'r', encoding='utf-8') as file:
+        html_content = file.read()
+
+    # Parse the HTML content
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Extract chat messages
+    messages = soup.find_all('div', class_='message')
+
+    # Transform messages to WhatsApp format
+    whatsapp_chat = ''
+    for message in messages:
+        
+        #Name of sender
+        sender_element = message.find('div', class_='from_name')
+        if sender_element is  not None:
+            sender = sender_element.text.strip()
+
+        #date and time
+        timestamp_div = message.find('div', class_="pull_right date details")
+        if timestamp_div:
+            timestamp = timestamp_div['title']
+            date_str = timestamp[:10]
+            time_str = timestamp[11:19]
+        else:
+            date_str, time_str = None, None
+        
+        #find if it is a reply
+        reply_element=message.find('div',class_='reply_to details')
+        replyto = None
+        if reply_element is not None:
+            for number in reply_element.find_all('a'):
+                replyto=number.get('href')
+                
+                #remove text before number of replied message
+                i=replyto.index("m")
+                replyto=replyto[i+7:]
+                a=int(replyto)
+                actual_message_number = message.get('id')
+                i=actual_message_number.index("m")
+                actual_message_number=actual_message_number[i+7:]
+                b=int(actual_message_number)
+                # Format reply in WhatsApp format
+                if time_str:
+                    whatsapp_message = f'{date_str}, {time_str} - {sender}: '
+                    if replyto is not None:
+                        whatsapp_message += f'In reply to message {a-b}\n'
+                    whatsapp_chat += whatsapp_message
+            
+        
+        #find text message
+        text_element = message.find('div', class_='text')
+        if text_element is not None:
+            text=text_element.text.strip()
+            
+            # Format txt message in WhatsApp format
+            if time_str:
+                whatsapp_message = f'{date_str}, {time_str} - {sender}: '
+                if text is not None:
+                    whatsapp_message += f'{text}\n'
+                whatsapp_chat += whatsapp_message
+        #find media
+        media_element=message.find('div',class_='media_wrap clearfix')
+        media = None
+        if media_element is not None:
+            for link in media_element.find_all('a'):
+                media=link.get('href')
+                
+                #remove chat_01 before file name
+                i=media.index("chat_01/")
+                media=media[i+8:]
+                #remove filetype before file name
+                i=media.index("/")
+                media=media[i+1:]
+                
+                # Format media message in WhatsApp format
+                if time_str:
+                    whatsapp_message = f'{date_str}, {time_str} - {sender}: '
+                    if media is not None:
+                        whatsapp_message += f'{media} (file attached)\n'
+                    whatsapp_chat += whatsapp_message
+            
+            #stickers or animation not found            
+            status_emoji=media_element.find('div',class_='status details')
+            if status_emoji is not None:
+                sticker_emoji=status_emoji.text.strip()
+                description=media_element.find('div', class_='title bold')
+                whatismedia=description.text.strip()
+                if time_str:
+                    whatsapp_message = f'{date_str}, {time_str} - {sender}: '
+                    if sticker_emoji is not None:
+                        whatsapp_message += f'{whatismedia} not included: {sticker_emoji}\n'
+                    whatsapp_chat += whatsapp_message
+                
+
+    # Save the transformed chat to a file
+    with open('_chat.txt', 'w', encoding='utf-8') as file:
+        file.write(whatsapp_chat)
+
+    print('Transformation complete. The WhatsApp chat export is saved as _chat.txt')
+
+# Usage example
+transform_html_to_whatsapp("messages.html")
+
